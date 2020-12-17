@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<courseStructure xmlns="https://w3id.org/xapi/profiles/cmi5/v1/CourseStructure.xsd">
+  <course id="http://dHa0XGgJ_46Nv1if_CItqu79N8eWPlvg_rise/course">
+    <title>
+      <langstring lang="en-US">Biologia</langstring>
+    </title>
+    <description>
+      <langstring lang="en-US"></langstring>
+    </description>
+  </course>
+  <objectives>
+          <objective id="http://dHa0XGgJ_46Nv1if_CItqu79N8eWPlvg_rise/objective/gNuXqukovCfbQK9UkRmd4l6wfCiNrpjK">
+        <title>
+          <langstring lang="en-US">
+            Característiques dels éssers vius
+          </langstring>
+        </title>
+        <description>
+          <langstring lang="en-US">
+            
+          </langstring>
+        </description>
+      </objective>
+      </objectives>
+  
+  <au id="http://dHa0XGgJ_46Nv1if_CItqu79N8eWPlvg_rise/activity" launchMethod="OwnWindow" moveOn="Passed"  >
+    <title>
+      <langstring lang="en">
+        Biologia
+      </langstring>
+    </title>
+    <description>
+      <langstring lang="en">
+        
+      </langstring>
+    </description>
+    <objectives>
+              <objective idref="http://dHa0XGgJ_46Nv1if_CItqu79N8eWPlvg_rise/objective/gNuXqukovCfbQK9UkRmd4l6wfCiNrpjK" />
+          </objectives>
+    <url>scormdriver/indexAPI.html</url>
+  </au>
+</courseStructure>
