@@ -1,0 +1,491 @@
+<?xml version='1.0' encoding='UTF-8' ?><addon id='Assistant_Controller'><metadata></metadata><model><property name='SwiffyAnimationId' displayName='Swiffy Assistant Animation ID' type='string' isLocalized='false'/><property name='AllOkAnimationId' displayName='Swiffy All Ok Animation ID' type='string' isLocalized='false'/><property name='AwardId' displayName='Award Image ID' type='string' isLocalized='false'/><property name='MultiAudioId' displayName='MultiAudio ID' type='string' isLocalized='false'/><property name='AllOkMultiAudioId' displayName='MultiAudio AllOk ID' type='string' isLocalized='false'/><property name='DidableIdleSounds' displayName='Disable Idle Sounds' type='boolean' isLocalized='false'/></model><resources></resources><css>p.acView{
+    font-size: 10px; color: #000;
+}
+p.acError{
+    color: red;
+}</css><view>&lt;p&gt;&lt;/p&gt;</view><preview>&lt;p&gt;&lt;/p&gt;</preview><presenter>function AddonAssistant_Controller_create(){
+			
+	var presenter = function(){}
+	
+	presenter.setPlayerController = function(controller) {
+		presenter.playerController = controller;
+        presenter.eventBus = controller.getEventBus();
+        presenter.eventBus.addEventListener(&apos;ValueChanged&apos;, this);
+		presenter.eventBus.addEventListener(&apos;ShowAnswers&apos;, this);
+        presenter.eventBus.addEventListener(&apos;HideAnswers&apos;, this);
+        presenter.eventBus.addEventListener(&apos;PageLoaded&apos;, this);
+		
+        presenter.presentation = controller.getPresentation();
+        presenter.commander = controller.getCommands();
+        presenter.currentIndex = controller.getCurrentPageIndex();
+        presenter.scoreService = controller.getScore();
+	};
+
+	presenter.run = function(view, model){
+		presenter.view = view;
+		presenter.model = model;
+		presenter.PageAllOkArray = [];
+		presenter.PageErrorArray = [];
+		presenter.talkItem = 1;
+		presenter.eKeyboardEnabled = true;
+		presenter.rand = Math.floor(Math.random() * 40) + 1;
+		presenter.addonLoadedDeferred = new $.Deferred();
+		presenter.addonLoaded = presenter.addonLoadedDeferred.promise();
+		
+		presenter.id = 1;
+		presenter.assistantName = &quot;Charlie&quot;;
+		presenter.action = &apos;idle&apos;;
+		presenter.idleTime = 0;
+		presenter.DidableIdleSounds = model.DidableIdleSounds;
+	}
+	
+	presenter.init = function(view, model){
+		if(presenter.presentation.getPage(presenter.currentIndex).isReportable()){
+			//console.log(&apos;********* init 2.2 *********&apos;);
+			
+			presenter.playerController.getFooterModule(&apos;Show_Answers1&apos;).show();
+			presenter.playerController.getFooterModule(&apos;Button1&apos;).show();
+
+			//checking if required modules exist
+			if(presenter.playerController.getModule(model.SwiffyAnimationId) == null){
+				presenter.errorHandler(&apos;Error! There is no &apos;+model.SwiffyAnimationId+&apos; module on the page!&apos;); return 0;
+			}
+			if(presenter.playerController.getModule(model.AllOkAnimationId) == null){
+				presenter.errorHandler(&apos;Error! There is no &apos;+model.AllOkAnimationId+&apos; module on the page!&apos;); return 0;
+			}
+			if(presenter.playerController.getModule(model.AwardId) == null){
+				presenter.errorHandler(&apos;Error! There is no &apos;+model.AwardId+&apos; module on the page!&apos;); return 0;
+			}
+			if(presenter.playerController.getHeaderModule(model.MultiAudioId) == null){
+				presenter.errorHandler(&apos;Error! There is no &apos;+model.MultiAudioId+&apos; module on the page!&apos;); return 0;
+			}
+			if(presenter.playerController.getHeaderModule(model.AllOkMultiAudioId) == null){
+				presenter.errorHandler(&apos;Error! There is no &apos;+model.AllOkMultiAudioId+&apos; module on the page!&apos;); return 0;
+			}
+			
+			presenter.Animation = presenter.playerController.getModule(model.SwiffyAnimationId);
+			presenter.AnimationAllOk = presenter.playerController.getModule(model.AllOkAnimationId);
+			presenter.Award = presenter.playerController.getModule(model.AwardId);
+			presenter.Sound = presenter.playerController.getHeaderModule(model.MultiAudioId);
+			presenter.AllOkSound = presenter.playerController.getHeaderModule(model.AllOkMultiAudioId);
+			
+			presenter.playerController.getModule(&apos;CloseAnimationBtn&apos;).hide();
+			presenter.AnimationAllOk.hide();
+			presenter.AnimationAllOk.switchAnimation(presenter.rand);
+			presenter.AnimationAllOk.loadAnimation();
+
+			presenter.changeAssistant(presenter.id);
+			
+			//talking after idle time of 30 sec
+		    //console.log(&quot;presenter.DidableIdleSounds: &quot;+presenter.DidableIdleSounds);
+			if(!presenter.DidableIdleSounds){
+			    //console.log(&quot;Enable Idle Sounds!&quot;);
+			    presenter.intervalTalk();
+			}
+		
+		}else{
+			presenter.playerController.getFooterModule(&apos;Show_Answers1&apos;).hide();
+			presenter.playerController.getFooterModule(&apos;Button1&apos;).hide();
+		}
+		presenter.addonLoadedDeferred.resolve();
+	}
+
+	presenter.onEventReceived = function(eventName, eventData){
+
+		if(eventName == &apos;PageLoaded&apos; &amp;&amp; eventData.source == &apos;footer&apos;){
+			//console.log(&apos;PageLoaded!&apos;);
+			presenter.init(presenter.view,presenter.model);
+			
+			if(presenter.playerController.getModule(&apos;eKeyboard1&apos;) != null){
+			    presenter.playerController.getModule(&apos;eKeyboard1&apos;).showCloseButton();
+    			if(presenter.eKeyboardEnabled){
+    			    presenter.playerController.getModule(&apos;eKeyboard1&apos;).enable();
+    			}else{
+    			    presenter.playerController.getModule(&apos;eKeyboard1&apos;).disable();
+    			}
+			}
+			
+		}
+		
+		if(eventData.source == &apos;eKeyboard1&apos;){
+		    if(eventData.value == &apos;disable&apos;){
+		        presenter.eKeyboardEnabled = false;
+		    }
+		    if(eventData.value == &apos;enable&apos;){
+		        presenter.eKeyboardEnabled = true;
+		    }
+			//console.log(&quot;eKeyboard1 status changed: &quot;+presenter.eKeyboardEnabled);
+		}
+		
+		if(eventData.source == presenter.model.MultiAudioId){
+			
+			switch(presenter.action){
+			
+				case &quot;talk&quot;: {
+					if(eventData.value == &apos;playing&apos;){
+						presenter.Animation.setVars(&quot;action,talk&quot;);
+						presenter.Animation.setVars(&quot;action,talk&quot;);
+					}
+					if(eventData.value == &apos;end&apos;){
+						presenter.Animation.setVars(&quot;action,silence&quot;);
+						presenter.action = &apos;idle&apos;;
+					}
+					break;
+				}
+				
+				case &quot;wrong&quot;: {
+					if(eventData.value == &apos;playing&apos;){
+						presenter.Animation.setVars(&quot;action,wrong&quot;);
+					}
+					if(eventData.value == &apos;end&apos;){
+						presenter.action = &apos;idle&apos;;
+					}
+					break;
+				}
+				
+				case &quot;correct&quot;: {
+					if(eventData.value == &apos;playing&apos;){
+						presenter.Animation.setVars(&quot;action,correct&quot;);
+					}
+					if(eventData.value == &apos;end&apos;){
+						presenter.action = &apos;idle&apos;;
+					}
+					break;
+				}
+				
+				case &quot;allOk&quot;: {
+					if(eventData.value == &apos;playing&apos;){
+						presenter.Animation.setVars(&quot;action,allOk&quot;);
+					}
+					if(eventData.value == &apos;end&apos;){
+						presenter.action = &apos;idle&apos;;
+					}
+					break;
+				}
+				
+				case &quot;allOk2&quot;: {
+					if(eventData.value == &apos;playing&apos;){
+						//presenter.Animation.setVars(&quot;action,allOk2&quot;);
+						//presenter.Award.enable();
+					}
+					if(eventData.value == &apos;end&apos;){
+						presenter.action = &apos;idle&apos;;
+					}
+					break;
+				}
+				
+			}
+			
+		}
+		if(eventName == &quot;ShowAnswers&quot;){
+            presenter.showAnswers();
+        }
+        if(eventName == &quot;HideAnswers&quot;){
+            presenter.hideAnswers();
+        }
+		
+		if(eventData.source == presenter.model.AllOkMultiAudioId){
+			if(presenter.action == &apos;allOkAnim&apos;){
+				if(eventData.value == &apos;playing&apos;){
+					presenter.AnimationAllOk.show();
+					presenter.playerController.getModule(&apos;CloseAnimationBtn&apos;).show();
+					presenter.AnimationAllOk.start();
+					presenter.AnimationAllOk.replay();
+					presenter.AnimationAllOk.setVars(&quot;action,play&quot;);
+				}
+				if(eventData.value == &apos;end&apos;){
+					presenter.action = &apos;idle&apos;;
+					setTimeout(function(){
+						//presenter.AnimationAllOk.hide();
+						presenter.changeAssistant(presenter.id);
+					},1000);
+				}
+			}else{
+				presenter.AllOkSound.stop();
+			}
+			
+		}
+		
+		if(eventData.source == presenter.model.AwardId){
+			//console.log(&apos;Award clicked&apos;);
+			//presenter.Award.disable();
+			presenter.action = &apos;allOkAnim&apos;;
+			presenter.Animation.setVars(&quot;action,silence&quot;);
+			presenter.Animation.setVars(&quot;action,pause&quot;);
+			presenter.AllOkSound.jumpTo(presenter.rand);
+			presenter.AllOkSound.play();
+		}
+		
+		if(eventData.source == &apos;CloseAnimationBtn&apos;){
+			presenter.playerController.getModule(&apos;CloseAnimationBtn&apos;).hide();
+			presenter.AnimationAllOk.hide();
+			presenter.AllOkSound.stop();
+			presenter.changeAssistant(presenter.id);
+		}
+		
+		if(eventData.source == &apos;pageRatingBtn&apos;){
+			presenter.playerController.getModule(&apos;changeAssistantBtn1&apos;).hide();
+			presenter.playerController.getModule(&apos;changeAssistantBtn2&apos;).hide();
+			presenter.playerController.getModule(&apos;changeAssistantBtn3&apos;).hide();
+			presenter.playerController.getModule(&apos;changeAssistantBtn4&apos;).hide();
+			presenter.playerController.getModule(&apos;changeAssistantBtn5&apos;).hide();
+		}
+		
+    };
+    
+	presenter.intervalTalk = function(){
+		presenter.interval = setInterval(function(){
+			if(presenter.idleTime == 30){
+				if(presenter.talkItem &gt; presenter.maxTalks){
+					presenter.talkItem = 1;
+				}
+				var id = &quot;idle0&quot;+presenter.talkItem;
+				presenter.talk(id); 
+				presenter.idleTime = 0;
+				presenter.talkItem++;
+			}
+			presenter.idleTime++;
+		},1000);
+		//console.log(&quot;interval initiated on id: &quot;+presenter.interval);
+	}
+	
+	presenter.errorHandler = function(msg){
+        $(presenter.view).find(&apos;p&apos;)[0].innerHTML += &apos;&lt;p class=&quot;acError&quot;&gt;&apos;+msg+&apos;&lt;/p&gt;&lt;br/&gt;&apos;;
+	}
+	
+	presenter.replayAllOkAnimation = function(){
+		presenter.action = &apos;allOkAnim&apos;;
+		presenter.AllOkSound.jumpTo(presenter.rand);
+		presenter.AllOkSound.play();
+	}
+	
+	presenter.changeAssistant = function(id){
+		//console.log(&apos;changeAssistant&apos;);
+		presenter.Animation.setVars(&quot;action,silence&quot;);
+		presenter.Sound.stop();
+		presenter.id = parseInt(id,10);
+		
+		switch(presenter.id){
+			case 1: {presenter.assistantName = &quot;Charlie&quot;; presenter.maxTalks = 4; break;} 
+			case 2: {presenter.assistantName = &quot;Nosy&quot;; presenter.maxTalks = 4; break;} 
+			case 3: {presenter.assistantName = &quot;Peppy&quot;; presenter.maxTalks = 5; break;}
+			case 4: {presenter.assistantName = &quot;Rocky&quot;; presenter.maxTalks = 4; break;} 
+			case 5: {presenter.assistantName = &quot;Tricky&quot;; presenter.maxTalks = 5; break;}
+		}
+		
+		presenter.Animation.switchAnimation(presenter.id);
+		//presenter.Animation.loadAnimation();
+		presenter.Animation.start();
+		presenter.Animation.replay();
+		presenter.Animation.setVars(&quot;action,play&quot;);
+	}		
+	
+	presenter.wrongResponse = function(){
+        presenter.PageErrorArray[presenter.currentIndex+1] = 1;
+	    //console.log(presenter.PageErrorArray);
+	    presenter.responseHandler(&apos;wrong&apos;);
+		
+		$(presenter.Award.getView()).fadeOut(1000, &quot;easeOutBounce&quot;, function(){
+			presenter.Award.hide();
+		});
+	}
+	
+	presenter.correctResponse = function(){
+		var action = &apos;correct&apos;;
+		var id = presenter.presentation.getPage(presenter.currentIndex).getId();
+		var score = presenter.scoreService.getPageScoreById(id).score;
+		var maxScore = presenter.scoreService.getPageScoreById(id).maxScore;
+		var percentageScore = (score/maxScore) * 100;
+        var pageIndex = parseInt(presenter.currentIndex,10)+1;
+
+		//console.log(&apos;percentageScore: &apos;+percentageScore);
+		
+		if(percentageScore==100){//ALL OK!
+		
+			action = &apos;allOk&apos;;
+ 
+			if(typeof presenter.PageErrorArray[pageIndex] === &apos;undefined&apos; &amp;&amp; typeof presenter.PageAllOkArray[pageIndex] !== &apos;number&apos;){
+				//action = &apos;allOk2&apos;;
+				presenter.Award.enable();
+			//	console.log(&apos;award enabled!&apos;);
+			}
+			
+			presenter.PageAllOkArray[pageIndex] = 1;
+			clearInterval(presenter.interval);
+		}
+
+	    presenter.responseHandler(action);
+	}
+	
+	presenter.correctResponse2 = function(){
+		var action = &apos;correct&apos;;
+		var id = presenter.presentation.getPage(presenter.currentIndex).getId();
+		var score = presenter.scoreService.getPageScoreById(id).score;
+		var maxScore = presenter.scoreService.getPageScoreById(id).maxScore;
+		var errorCount = presenter.scoreService.getPageScoreById(id).errorCount;
+		var percentageScore = (score/maxScore) * 100;
+        var pageIndex = parseInt(presenter.currentIndex,10)+1;
+
+		if(percentageScore==100 &amp;&amp; errorCount == 0){//ALL OK!
+		
+			action = &apos;allOk&apos;;
+ 
+			if(typeof presenter.PageErrorArray[pageIndex] === &apos;undefined&apos; &amp;&amp; typeof presenter.PageAllOkArray[pageIndex] !== &apos;number&apos;){
+				//action = &apos;allOk2&apos;;
+				presenter.Award.enable();
+			//	console.log(&apos;award enabled!&apos;);
+			}
+			
+			presenter.PageAllOkArray[pageIndex] = 1;
+			clearInterval(presenter.interval);
+		}
+
+	    presenter.responseHandler(action);
+	}
+	
+	presenter.talk = function(id){
+	    presenter.responseHandler(&apos;talk&apos;,id);
+	}
+	
+	presenter.responseHandler = function(action,id){
+		if(presenter.presentation.getPage(presenter.currentIndex).isReportable()){
+			presenter.action = action;	
+			presenter.idleTime = 0;
+			if(id != null){action = id;}
+			presenter.Sound.jumpToID(presenter.assistantName+&quot;_&quot;+action);
+			presenter.Sound.play();
+		}
+	}
+	
+	presenter.executeCommand = function(name, params) {
+        var commands = {
+			&apos;show&apos;: presenter.show,
+			&apos;hide&apos;: presenter.hide,
+			&apos;changeAssistant&apos;: presenter.changeAssistant,
+			&apos;wrongResponse&apos;: presenter.wrongResponse,
+			&apos;correctResponse&apos;: presenter.correctResponse,
+			&apos;correctResponse2&apos;: presenter.correctResponse2,
+			&apos;talk&apos;: presenter.talk
+        };
+
+        Commands.dispatch(commands, name, params[0], presenter);
+    };
+
+	presenter.setShowErrorsMode = function(){
+		if(presenter.presentation.getPage(presenter.currentIndex).isReportable()){
+			//console.log(&quot;setShowErrorsMode(), Interval cleared&quot;);
+			presenter.Animation.setVars(&quot;action,silence&quot;);
+			presenter.Sound.stop();
+			clearInterval(presenter.interval);
+		}
+	}
+	presenter.setWorkMode = function(){
+		if(presenter.presentation.getPage(presenter.currentIndex).isReportable()){
+	    //console.log(&quot;setWorkMode()&quot;);
+			if(presenter.PageAllOkArray[presenter.currentIndex+1] != 1){
+    			if(!presenter.DidableIdleSounds){
+    			    presenter.intervalTalk();
+    			}
+			}
+		}
+	}
+	
+	presenter.showAnswers = function(){
+		presenter.PageErrorArray[presenter.currentIndex+1] = 1;
+
+		$(presenter.Award.getView()).fadeOut(1000, &quot;easeOutBounce&quot;, function(){
+			presenter.Award.hide();
+		});
+	
+		presenter.Animation.setVars(&quot;action,silence&quot;);
+		presenter.Sound.stop();
+	    clearInterval(presenter.interval);
+		//console.log(&quot;showAnswers -------- Interval cleared&quot;);
+	}
+	presenter.hideAnswers = function(){
+		//console.log(&quot;hideAnswers -------- Interval init&quot;);
+		if(presenter.PageAllOkArray[presenter.currentIndex+1] != 1){
+			if(!presenter.DidableIdleSounds){
+			    presenter.intervalTalk();
+			}
+		}
+	}
+	
+	presenter.reset = function(){
+		if(presenter.presentation.getPage(presenter.currentIndex).isReportable()){
+			clearInterval(presenter.interval);
+			//console.log(&quot;-------- Interval cleared&quot;);
+			if(presenter.PageAllOkArray[presenter.currentIndex+1] != 1){
+				if(!presenter.DidableIdleSounds){
+    			    presenter.intervalTalk();
+    			}
+			}
+			
+			presenter.changeAssistant(presenter.id);
+			
+			//if(presenter.PageErrorArray[presenter.currentIndex+1] == 1){
+				//presenter.Award.hide();
+			//}
+			//to powyżej wyłączamy, bo
+			//jednak robimy tak, że po resecie można otrzymać nagrodę, więc:
+			presenter.PageAllOkArray.splice(presenter.currentIndex+1, 1);
+			presenter.PageErrorArray.splice(presenter.currentIndex+1, 1);
+			$(presenter.Award.getView()).css(&quot;visibility&quot;,&quot;visible&quot;);
+			$(presenter.Award.getView()).css(&quot;display&quot;,&quot;block&quot;);
+			presenter.Award.show();
+			presenter.AnimationAllOk.hide();
+		}
+	}
+	
+	presenter.getState = function(){
+		//if(presenter.presentation.getPage(presenter.currentIndex).isReportable()){
+			//console.log(&apos;********* abandon ship - getState &amp; clearInterval&apos;);
+
+			clearInterval(presenter.interval);
+			
+			if(presenter.PageErrorArray[presenter.currentIndex+1] == 1){
+				presenter.Award.hide();
+				//console.log(&apos;getState, hide award!&apos;);
+			}
+			
+			return JSON.stringify({
+				&apos;id&apos; : presenter.id,
+				&apos;assistantName&apos; : presenter.assistantName,
+				&apos;PageErrorArray&apos; : presenter.PageErrorArray,
+				&apos;PageAllOkArray&apos; : presenter.PageAllOkArray,
+				&apos;talkItem&apos; : presenter.talkItem,
+				&apos;eKeyboardEnabled&apos;: presenter.eKeyboardEnabled
+			});
+		//}
+	}
+
+	presenter.setState = function(state){
+		presenter.addonLoaded.then(function(){
+		//console.log(&apos;setState!&apos;);
+			//console.log(&apos;********* setState!&apos;);
+			
+			var parsedState = JSON.parse(state);
+			
+			presenter.id = parsedState.id;
+			presenter.assistantName = parsedState.assistantName;
+			presenter.PageErrorArray = parsedState.PageErrorArray;
+			presenter.PageAllOkArray = parsedState.PageAllOkArray;
+			presenter.talkItem = parsedState.talkItem;
+			presenter.eKeyboardEnabled = parsedState.eKeyboardEnabled;
+			
+			presenter.action = &apos;idle&apos;;
+			presenter.idleTime = 0;
+				
+			if(presenter.presentation.getPage(presenter.currentIndex).isReportable()){				
+				presenter.changeAssistant(presenter.id);
+				
+				if(presenter.PageAllOkArray[presenter.currentIndex+1] == 1){
+					//console.log(&quot;Page all Ok was here, disabling talk interval!&quot;);
+					clearInterval(presenter.interval);
+				}
+			}
+		});
+	}
+
+	return presenter;
+}</presenter></addon>

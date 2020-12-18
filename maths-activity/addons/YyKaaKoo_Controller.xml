@@ -1,0 +1,445 @@
+<?xml version='1.0' encoding='UTF-8' ?><addon id='YyKaaKoo_Controller'><metadata></metadata><model></model><resources></resources><css></css><view></view><preview>&lt;p&gt;YyKaaKoo Controller&lt;/p&gt;</preview><presenter>function AddonYyKaaKoo_Controller_create() {
+			
+	var presenter = function () {}
+	
+	presenter.setPlayerController = function(controller) {
+		presenter.playerController = controller;
+        presenter.eventBus = controller.getEventBus();
+        presenter.eventBus.addEventListener(&apos;ValueChanged&apos;, this);
+		//presenter.eventBus.addEventListener(&apos;ShowAnswers&apos;, this);
+        presenter.eventBus.addEventListener(&apos;HideAnswers&apos;, this);
+        presenter.eventBus.addEventListener(&apos;PageLoaded&apos;, this);
+		presenter.eventBus.addEventListener(&apos;LimitedCheck&apos;, this);
+		
+        presenter.presentation = controller.getPresentation();
+        presenter.commander = controller.getCommands();
+        presenter.currentIndex = controller.getCurrentPageIndex();
+        presenter.scoreService = controller.getScore();
+	};
+
+	presenter.PageAllOkArray = [];
+	presenter.PageErrorArray = [];
+	presenter.PageWithoutExercicesArray = [];
+	
+	presenter.run = function(view, model){
+		
+		presenter.view = view;
+		presenter.model = model;
+		
+		presenter.rand = Math.floor(Math.random() * 30) + 1;
+		
+		//TYMCZASOWE  SPRAWDZENIE ILE JEST ANIMACJI W MODULE AssistantAnimation - TO SAMO JEST NA RESET!!!
+		//if( $(&quot;#AssistantAnimation&quot;).find(&quot;.swiffyItem&quot;).length == 10 ){
+		//	presenter.randAssistant = Math.floor(Math.random() * 10) + 1;//docelowo zostaje tylko ta linikja!
+			//console.log(&quot;losujemy! wylosowany asystant: &quot;+presenter.randAssistant);
+		//}else{
+		//	presenter.randAssistant = 1;
+			//console.log(&quot;1 assistant w module&quot;);
+		//}
+		presenter.randAssistant = Math.floor(Math.random() * 10) + 1;//docelowo zostaje tylko ta linikja!
+		
+		presenter.addonLoadedDeferred = new $.Deferred();
+		presenter.addonLoaded = presenter.addonLoadedDeferred.promise();
+		
+		jQuery.fn.centerAssistant = function () {
+			var topWindow = window;
+			if (window.parent) {
+				topWindow = window.parent;
+			}
+			if (window.opener) {
+				topWindow = window.opener;
+			}
+			
+			var ifreameOffset = 0;
+			if(window.frameElement != null){
+				ifreameOffset = $(window.frameElement).offset().top;
+			}
+			
+			var verticalCenter = Math.floor(topWindow.scrollY + topWindow.innerHeight/2 - 166 - 150 - ifreameOffset);
+			
+			var presentationHeight = parseInt($(&quot;.ic_page&quot;).css(&quot;height&quot;),10) + parseInt($(&quot;.ic_header&quot;).css(&quot;height&quot;),10) + parseInt($(&quot;.ic_footer&quot;).css(&quot;height&quot;),10);
+			
+			if(presentationHeight &lt; topWindow.innerHeight){
+				verticalCenter = presentationHeight/2 - 166 - 150;
+			}
+			if(verticalCenter &gt; parseInt($(&quot;.ic_page&quot;).css(&quot;height&quot;),10) - 370){
+				verticalCenter = parseInt($(&quot;.ic_page&quot;).css(&quot;height&quot;),10) - 370;
+			}
+			if(verticalCenter &lt; 115){
+				verticalCenter = 115;
+			}
+
+			this.css(&quot;top&quot;,  verticalCenter + &quot;px&quot;);
+			return this;
+		}
+	}
+	
+	presenter.init = function(view, model){
+		presenter.log(&apos;********* Y_C init 0.6 *********&apos;);
+		
+		presenter.log(&apos;init presenter.PageWithoutExercicesArray[&apos;+presenter.currentIndex+&apos;]: &apos;+presenter.PageWithoutExercicesArray[presenter.currentIndex]);
+		
+		if(presenter.presentation.getPage(presenter.currentIndex).isReportable() &amp;&amp; presenter.PageWithoutExercicesArray[presenter.currentIndex] != 1){
+			
+			presenter.playerController.getFooterModule(&apos;Show_Answers1&apos;).show();
+			presenter.playerController.getFooterModule(&apos;Button1&apos;).show();
+			
+			presenter.AssistantAnimationId = &apos;AssistantAnimation&apos;;
+			presenter.CloseAnimationBtnId = &apos;CloseAnimationBtn&apos;;
+			presenter.AnimationAllOkId = &apos;AnimationAllOk&apos;;
+			presenter.AwardBtnId = &apos;AwardBtn&apos;;
+			presenter.AllOkSoundId = &apos;AllOkSound&apos;;
+			
+			//checking if required modules exist
+			if(presenter.playerController.getModule(presenter.AssistantAnimationId) == null){
+				presenter.errorHandler(&apos;ERROR!!! There is no &apos;+presenter.AssistantAnimationId+&apos; module on the page!&apos;); return 0;
+			}
+			presenter.AssistantAnimation = presenter.playerController.getModule(presenter.AssistantAnimationId);
+			
+			if(presenter.playerController.getModule(presenter.CloseAnimationBtnId) == null){
+				presenter.errorHandler(&apos;ERROR!!! There is no &apos;+presenter.CloseAnimationBtnId+&apos; module on the page!&apos;); return 0;
+			}
+			presenter.CloseAnimationBtn = presenter.playerController.getModule(presenter.CloseAnimationBtnId);
+			
+			if(presenter.playerController.getModule(presenter.AnimationAllOkId) == null){
+				presenter.errorHandler(&apos;ERROR!!! There is no &apos;+presenter.AnimationAllOkId+&apos; module on the page!&apos;); return 0;
+			}
+			presenter.AnimationAllOk = presenter.playerController.getModule(presenter.AnimationAllOkId);
+			
+			if(presenter.playerController.getModule(presenter.AwardBtnId) == null){
+				presenter.errorHandler(&apos;ERROR!!! There is no &apos;+presenter.AwardBtnId+&apos; module on the page!&apos;); return 0;
+			}
+			presenter.AwardBtn = presenter.playerController.getModule(presenter.AwardBtnId);
+			
+			if(presenter.playerController.getHeaderModule(presenter.AllOkSoundId) == null){
+				presenter.errorHandler(&apos;ERROR!!! There is no &apos;+presenter.AllOkSoundId+&apos; module on the page!&apos;); return 0;
+			}
+			presenter.AllOkSound = presenter.playerController.getHeaderModule(presenter.AllOkSoundId);
+			
+			
+			presenter.AnimationAllOk.hide();
+			presenter.AnimationAllOk.switchAnimation(presenter.rand);
+			presenter.AssistantAnimation.switchAnimation(presenter.randAssistant);
+			presenter.AssistantAnimation.hide();
+			presenter.AnimationAllOk.loadAnimation();
+			
+		}else{
+			presenter.playerController.getFooterModule(&apos;Show_Answers1&apos;).hide();
+			presenter.playerController.getFooterModule(&apos;Button1&apos;).hide();
+		}
+		presenter.log(&apos;addonLoadedDeferred.resolve()&apos;);
+		presenter.addonLoadedDeferred.resolve();
+	}
+
+	presenter.onEventReceived = function(eventName, eventData){
+		if(eventName == &apos;PageLoaded&apos; &amp;&amp; eventData.source == &apos;footer&apos;){
+			presenter.init(presenter.view,presenter.model);
+			
+			var pageIndex = parseInt(presenter.currentIndex,10)+1;
+		    if(presenter.PageAllOkArray[pageIndex] == 1){
+		        presenter.CloseAnimationBtn.hide();
+		    	presenter.AwardBtn.show();
+		    }
+		}
+		
+		if(eventName == &quot;ShowAnswers&quot;){
+           presenter.showAnswers();
+        }
+        if(eventName == &quot;HideAnswers&quot;){
+           presenter.hideAnswers();
+        }
+		
+		if(eventData.source == presenter.AllOkSoundId &amp;&amp; eventData.value == &apos;playing&apos;){
+			presenter.AnimationAllOk.show();
+			presenter.CloseAnimationBtn.show();
+			presenter.AnimationAllOk.start();
+			presenter.AnimationAllOk.replay();
+			presenter.AnimationAllOk.setVars(&quot;action,play&quot;);
+		}
+		
+		if(eventData.source == presenter.AwardBtnId){
+			presenter.log(&apos;Award clicked&apos;);
+			presenter.action = &apos;allOkAnim&apos;;
+			presenter.AllOkSound.jumpTo(presenter.rand);
+			presenter.AllOkSound.play();
+		}
+		
+		if(eventData.source == presenter.CloseAnimationBtnId){
+			presenter.CloseAnimationBtn.hide();
+			presenter.AnimationAllOk.hide();
+			presenter.AllOkSound.stop();
+		}
+		
+		//check page score on every event
+		var pageIndex = parseInt(presenter.currentIndex,10)+1;
+		var id = presenter.presentation.getPage(presenter.currentIndex).getId();
+		var score = presenter.scoreService.getPageScoreById(id).score;
+		var maxScore = presenter.scoreService.getPageScoreById(id).maxScore;
+		var percentageScore = (score/maxScore) * 100;
+		var errorCount = presenter.scoreService.getPageScoreById(id).errorCount;
+		
+		if(presenter.presentation.getPage(presenter.currentIndex).isReportable() &amp;&amp; presenter.PageWithoutExercicesArray[presenter.currentIndex] != 1){
+			if(eventData.score == &quot;1&quot; || eventData.item == &quot;all&quot; || (eventData.value != &quot;&quot; &amp;&amp; eventData.value != undefined &amp;&amp; eventData.score != &quot;&quot;)){
+				//center Assistant Animation
+				$(presenter.AssistantAnimation.getView()).centerAssistant();
+				
+				presenter.log(&apos;percentageScore: &apos;+percentageScore);
+				//ALL OK!
+			
+				if(percentageScore==100 &amp;&amp; errorCount == 0){
+					if(typeof presenter.PageErrorArray[pageIndex] === &apos;undefined&apos; &amp;&amp; typeof presenter.PageAllOkArray[pageIndex] !== &apos;number&apos;){
+						presenter.log(&apos;award enabled!&apos;);
+						presenter.AwardBtn.show();
+						presenter.AwardBtn.enable();
+						presenter.AssistantAnimation.show();
+						presenter.AssistantAnimation.setVars(&quot;action,play&quot;);
+			
+					}else if(presenter.PageErrorArray[pageIndex] == 1){
+						presenter.log(&apos;na tej stronie był błąd, presenter.PageErrorArray[&apos;+pageIndex+&apos;] == &apos;+presenter.PageErrorArray[pageIndex])
+						presenter.AwardBtn.show();
+					}
+					presenter.PageAllOkArray[pageIndex] = 1;
+					presenter.onCheck();
+				}
+			}
+		}
+		
+        if(eventName == &apos;LimitedCheck&apos;){
+			var LCScore = presenter.playerController.getModule(eventData.source).getModulesScore();
+			if(LCScore.errors &gt; 0){
+				presenter.PageErrorArray[presenter.currentIndex+1] = 1;
+				presenter.log(&apos;na stronie &apos;+(presenter.currentIndex+1)+&apos; był error!&apos;);
+				presenter.AwardBtn.hide();
+				presenter.AwardBtn.disable();
+			}
+		}
+    };
+	
+	presenter.bindLC = function(arr){
+		presenter.bindedLCs = arr;
+	}
+	
+	presenter.markPageWithoutExercices = function(){
+		presenter.PageWithoutExercicesArray[presenter.currentIndex] = 1;
+		presenter.log(&apos;markPageWithoutExercices presenter.PageWithoutExercicesArray[&apos;+presenter.currentIndex+&apos;]: &apos;+presenter.PageWithoutExercicesArray[presenter.currentIndex]);
+	}
+	
+	presenter.onCheck = function(){
+		presenter.log(&apos;Check called!&apos;);
+			
+		var id = presenter.presentation.getPage(presenter.currentIndex).getId();
+		var score = presenter.scoreService.getPageScoreById(id).score;
+		var maxScore = presenter.scoreService.getPageScoreById(id).maxScore;
+		var percentageScore = (score/maxScore) * 100;
+		var errors = 0;
+		var sound = &apos;&apos;;
+		
+		if(percentageScore==100){
+			sound = &apos;AudioAward&apos;;
+		}
+		
+		$(presenter.bindedLCs).each(function(keyp,val){
+			presenter.log(&apos;LC: &apos;+val[0]+&apos;, IMG: &apos;+val[1]);
+			
+			var LCScore = presenter.playerController.getModule(val[0]).getModulesScore();
+			var face = presenter.playerController.getModule(val[1]);
+
+			if(LCScore.score == LCScore.maxScore &amp;&amp; LCScore.errors==0){
+				face.show();
+
+			}else if(LCScore.score &lt;= LCScore.maxScore) {
+				face.hide();
+			}
+			
+			if(LCScore.errors &gt; 0){
+				presenter.PageErrorArray[presenter.currentIndex+1] = 1;
+				errors++;
+				presenter.log(&apos;na stronie &apos;+(presenter.currentIndex+1)+&apos; był error!&apos;);
+				sound = &apos;AudioWrong&apos;;
+				presenter.AwardBtn.hide();
+				presenter.AwardBtn.disable();
+			}
+		});
+		
+		
+		if(sound != &apos;&apos;){
+			presenter.playerController.getModule(sound).play();
+			presenter.log(sound+&apos; play!&apos;);
+		}
+		
+	}
+    
+	presenter.intervalTalk = function(){
+		presenter.interval = setInterval(function(){
+			if(presenter.idleTime == 30){
+				if(presenter.talkItem &gt; presenter.maxTalks){
+					presenter.talkItem = 1;
+				}
+				var id = &quot;idle0&quot;+presenter.talkItem;
+				presenter.talk(id); 
+				presenter.idleTime = 0;
+				presenter.talkItem++;
+			}
+			presenter.idleTime++;
+		},1000);
+		//presenter.log(&quot;interval initiated on id: &quot;+presenter.interval);
+	}
+	
+	presenter.errorHandler = function(msg){
+        //$(presenter.view).innerHTML += &apos;&lt;p class=&quot;acError&quot;&gt;&apos;+msg+&apos;&lt;/p&gt;&lt;br/&gt;&apos;;
+        presenter.log(msg);
+	}
+	
+	presenter.replayAllOkAnimation = function(){
+		presenter.action = &apos;allOkAnim&apos;;
+		presenter.AllOkSound.jumpTo(presenter.rand);
+		presenter.AllOkSound.play();
+	}		
+	
+	presenter.wrongAnswer = function(){
+	    //presenter.responseHandler(&apos;wrong&apos;);
+		
+		//mistake made
+		presenter.PageErrorArray[presenter.currentIndex+1] = 1;
+	}
+	
+	presenter.correctResponse = function(){
+		var action = &apos;correct&apos;;
+		var id = presenter.presentation.getPage(presenter.currentIndex).getId();
+		var score = presenter.scoreService.getPageScoreById(id).score;
+		var maxScore = presenter.scoreService.getPageScoreById(id).maxScore;
+		var percentageScore = (score/maxScore) * 100;
+        var pageIndex = parseInt(presenter.currentIndex,10)+1;
+
+		//presenter.log(&apos;percentageScore: &apos;+percentageScore);
+		
+		if(percentageScore==100){//ALL OK!
+		
+			action = &apos;allOk&apos;;
+ 
+			if(typeof presenter.PageErrorArray[pageIndex] === &apos;undefined&apos; &amp;&amp; typeof presenter.PageAllOkArray[pageIndex] !== &apos;number&apos;){
+				//action = &apos;allOk2&apos;;
+				presenter.Award.enable();
+			//	presenter.log(&apos;award enabled!&apos;);
+			}
+			
+			presenter.PageAllOkArray[pageIndex] = 1;
+			clearInterval(presenter.interval);
+		}
+
+	    presenter.responseHandler(action);
+	}
+	
+	presenter.talk = function(id){
+	    presenter.responseHandler(&apos;talk&apos;,id);
+	}
+	
+	presenter.responseHandler = function(action,id){
+		if(presenter.presentation.getPage(presenter.currentIndex).isReportable() &amp;&amp; presenter.PageWithoutExercicesArray[presenter.currentIndex] != 1){
+			presenter.action = action;	
+			presenter.idleTime = 0;
+			if(id != null){action = id;}
+			presenter.Sound.jumpToID(presenter.assistantName+&quot;_&quot;+action);
+			presenter.Sound.play();
+		}
+	}
+	
+	presenter.executeCommand = function(name, params) {
+        var commands = {
+			&apos;show&apos;: presenter.show,
+			&apos;hide&apos;: presenter.hide,
+			&apos;bindLC&apos;: presenter.bindLC,
+			&apos;markPageWithoutExercices&apos;: presenter.markPageWithoutExercices,
+			&apos;wrongAnswer&apos;: presenter.wrongAnswer,
+			&apos;correctResponse&apos;: presenter.correctResponse,
+			&apos;talk&apos;: presenter.talk
+        };
+
+        Commands.dispatch(commands, name, params[0], presenter);
+    };
+
+	presenter.setShowErrorsMode = function(){
+		if(presenter.presentation.getPage(presenter.currentIndex).isReportable() &amp;&amp; presenter.PageWithoutExercicesArray[presenter.currentIndex] != 1){
+			presenter.onCheck();
+		}
+	}
+	presenter.setWorkMode = function(){
+		//if(presenter.presentation.getPage(presenter.currentIndex).isReportable()){
+	    
+		//}
+	}
+	
+	presenter.showAnswers = function(){
+		//presenter.PageErrorArray[presenter.currentIndex+1] = 1;
+	}
+	presenter.hideAnswers = function(){
+		
+	}
+	
+	presenter.reset = function(){
+		if(presenter.presentation.getPage(presenter.currentIndex).isReportable() &amp;&amp; presenter.PageWithoutExercicesArray[presenter.currentIndex] != 1){
+
+			presenter.PageAllOkArray.splice(presenter.currentIndex+1, 1);
+			presenter.PageErrorArray.splice(presenter.currentIndex+1, 1);
+			presenter.AwardBtn.disable();
+			presenter.AwardBtn.hide();
+			presenter.AnimationAllOk.hide();
+			
+			presenter.AnimationAllOk.switchAnimation(presenter.rand);
+			presenter.AssistantAnimation.switchAnimation(presenter.randAssistant);
+		}
+	}
+	
+	presenter.getState = function(){
+		presenter.log(&apos;getState!&apos;);
+		//if(presenter.presentation.getPage(presenter.currentIndex).isReportable()){
+			//presenter.log(&apos;********* abandon ship - getState &amp; clearInterval&apos;);
+			
+			// if(presenter.PageErrorArray[presenter.currentIndex+1] == 1){
+				// presenter.Award.hide();
+				// //presenter.log(&apos;getState, hide award!&apos;);
+			// }
+			
+			return JSON.stringify({
+				&apos;PageErrorArray&apos; : presenter.PageErrorArray,
+				&apos;PageAllOkArray&apos; : presenter.PageAllOkArray
+			});
+		//}
+	}
+
+	presenter.setState = function(state){
+		presenter.addonLoaded.then(function(){
+			presenter.log(&apos;******** setState!&apos;);
+			
+			var parsedState = JSON.parse(state);
+
+			presenter.PageErrorArray = parsedState.PageErrorArray;
+			presenter.PageAllOkArray = parsedState.PageAllOkArray;
+			
+			presenter.log(&apos;setState, presenter.PageAllOkArray: &apos;+presenter.PageAllOkArray);
+			presenter.log(&apos;setState, presenter.PageErrorArray: &apos;+presenter.PageErrorArray);
+			
+			if(presenter.PageAllOkArray[presenter.currentIndex+1] == 1){
+				presenter.log(&apos;wygląda na to, że na tej stronie już było all ok!&apos;);
+			}else{
+				presenter.log(&apos;na tej stronie nie było all ok!&apos;);
+			}
+			
+				
+			//if(presenter.presentation.getPage(presenter.currentIndex).isReportable()){				
+				
+				// if(presenter.PageAllOkArray[presenter.currentIndex+1] == 1){
+					// //presenter.log(&quot;Page all Ok was here, disabling talk interval!&quot;);
+					// clearInterval(presenter.interval);
+				// }
+			//}
+			presenter.log(&apos;setState! ********&apos;);
+		});
+	}
+	
+	presenter.log = function(msg){
+		//presenter.log(msg);
+	}
+	
+	return presenter;
+}</presenter></addon>
